@@ -1,7 +1,7 @@
 package components
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/pkg/errors"
 )
@@ -9,28 +9,43 @@ import (
 // Type of component
 type Type byte
 
+func (t Type) String() string {
+	switch t {
+	case drawableType:
+		return "drawableType"
+	case ownedType:
+		return "ownedType"
+	case posType:
+		return "posType"
+	case rectType:
+		return "rectType"
+	default:
+		return "unknown"
+	}
+}
+
 const (
-	// Drawable objects can be drawn to an image
-	Drawable Type = iota + 1
-	// Owned by something
-	Owned
-
-	// PosType of something
+	drawableType Type = iota + 1
+	ownedType
 	posType
-
 	rectType
 )
 
+// Owned is is the parent of a component
+type Owned struct{}
+
+// Drawable is a component that can be drawn
+type Drawable struct{}
+
+// Pos is the position of an entity
 type Pos struct {
 	X, Y int
 }
 
+// Rect is just a temp object
 type Rect struct {
 	W, H int
 }
-
-// TypeID is the ID in the corresponding map
-type TypeID int32
 
 // Map maps between entities and components
 type Map struct {
@@ -53,32 +68,56 @@ func (cm *Map) add(e string, cs ...interface{}) error {
 		entry = make(map[Type]interface{})
 	}
 
+	failIfAleadyExist := func(t Type) {
+		if _, ok := entry[t]; ok {
+			log.Fatalf("Entity already has ponent of this type %d:", t)
+		}
+	}
+
 	for _, c := range cs {
 
 		var typ Type
 		switch v := c.(type) {
 		case Pos:
-			fmt.Println("Pos")
+			failIfAleadyExist(typ)
 			typ = posType
 			entry[typ] = &v
 		case Rect:
-			fmt.Println("Rect")
+			failIfAleadyExist(typ)
 			typ = rectType
+			entry[typ] = &v
+		case Drawable:
+			failIfAleadyExist(typ)
+			typ = drawableType
+			entry[typ] = &v
+		case Owned:
+			failIfAleadyExist(typ)
+			typ = ownedType
 			entry[typ] = &v
 		default:
 			return errors.Errorf("Unknown type %v", c)
 		}
-
-		// Check that entity doesn't have component
-		// if _, ok := entry[typ]; ok {
-		// 	log.Fatalf("Entity already has ponent of this type %d:", typ)
-		// 	// return errors.Errorf("Entity acomlready has component of this type %d:", typ)
-		// }
-
-		fmt.Println("pointer", &c, c)
 	}
 	cm.m[e] = entry
 	return nil
+}
+
+func (cm *Map) remove(e string, typ Type) {
+	delete(cm.m[e], typ)
+}
+
+func (cm *Map) removeAll(e string) {
+	for key := range cm.m[e] {
+		delete(cm.m[e], key)
+	}
+}
+
+func (cm *Map) get(e string, typ Type) (interface{}, error) {
+	if _, ok := cm.m[e]; !ok {
+		return nil, errors.New("invalid ID")
+	}
+
+	return cm.m[e][typ], nil
 }
 
 func (cm *Map) hasComponents(e string, types ...Type) bool {
@@ -93,12 +132,4 @@ func (cm *Map) hasComponents(e string, types ...Type) bool {
 	}
 
 	return true
-}
-
-func (cm *Map) get(e string, typ Type) (interface{}, error) {
-	if _, ok := cm.m[e]; !ok {
-		return nil, errors.New("invalid ID")
-	}
-
-	return cm.m[e][typ], nil
 }
