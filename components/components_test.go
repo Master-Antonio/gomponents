@@ -1,7 +1,7 @@
 package components
 
 import (
-	"fmt"
+	"log"
 	"testing"
 )
 
@@ -25,12 +25,12 @@ func Test_BasicComponents(t *testing.T) {
 	}{
 		{
 			"Rect only",
-			[]Type{RectType},
+			[]Type{rectType},
 			true,
 		},
 		{
 			"Rect and Position",
-			[]Type{RectType, PositionType},
+			[]Type{rectType, posType},
 			true,
 		},
 		{
@@ -46,16 +46,23 @@ func Test_BasicComponents(t *testing.T) {
 		}
 	}
 
-	v, err := cm.get(e, RectType)
+	// Updating position
+	v, err := cm.get(e, posType)
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := (&v).(Rect)
-	fmt.Println(r)
+	p := v.(*Pos)
+	p.X++
+	p.X++
 
-	// fmt.Println("has Rect, Pos=", cm.hasComponents(e, RectType))
-	// fmt.Println("has Rect, Pos=", cm.hasComponents(e, RectType, PositionType))
+	w, err := cm.get(e, posType)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p2 := w.(*Pos)
 
-	// componentIndex().addComponent<ComponentTypeT>(m_id, std::forward<Args>(args)...);
-
+	expected := Pos{X: 3, Y: 2}
+	if *p2 != expected {
+		log.Fatalf("expected %v, got %v\n", *p2, expected)
+	}
 }

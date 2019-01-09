@@ -1,7 +1,7 @@
 package components
 
 import (
-	"log"
+	"fmt"
 
 	"github.com/pkg/errors"
 )
@@ -12,14 +12,13 @@ type Type byte
 const (
 	// Drawable objects can be drawn to an image
 	Drawable Type = iota + 1
-	// Position of something
-	Position
 	// Owned by something
 	Owned
 
-	PositionType
+	// PosType of something
+	posType
 
-	RectType
+	rectType
 )
 
 type Pos struct {
@@ -35,78 +34,52 @@ type TypeID int32
 
 // Map maps between entities and components
 type Map struct {
-	m map[string]map[Type]*interface{}
+	m map[string]map[Type]interface{}
 }
 
 // NewMap returns an initialized, empty Map
 func NewMap() *Map {
-	m := make(map[string]map[Type]*interface{})
+	m := make(map[string]map[Type]interface{})
 	cm := Map{m}
 	return &cm
 }
 
-func (cm *Map) add(e string, c interface{}) error {
+func (cm *Map) add(e string, cs ...interface{}) error {
 
-	var entry map[Type]*interface{}
+	var entry map[Type]interface{}
 	// Create a entry if entity doesn't have one
 	var ok bool
 	if entry, ok = cm.m[e]; !ok {
-		entry = make(map[Type]*interface{})
+		entry = make(map[Type]interface{})
 	}
 
-	var typ Type
-	switch c.(type) {
-	case Pos:
-		typ = PositionType
-	case Rect:
-		typ = RectType
-	default:
-		return errors.Errorf("Unknown type %v", c)
-	}
+	for _, c := range cs {
 
-	// Check that entity doesn't have component
-	if _, ok := entry[typ]; ok {
-		log.Fatalf("Entity already has component of this type %d:", typ)
-		// return errors.Errorf("Entity already has component of this type %d:", typ)
-	}
+		var typ Type
+		switch v := c.(type) {
+		case Pos:
+			fmt.Println("Pos")
+			typ = posType
+			entry[typ] = &v
+		case Rect:
+			fmt.Println("Rect")
+			typ = rectType
+			entry[typ] = &v
+		default:
+			return errors.Errorf("Unknown type %v", c)
+		}
 
-	entry[typ] = &c
+		// Check that entity doesn't have component
+		// if _, ok := entry[typ]; ok {
+		// 	log.Fatalf("Entity already has ponent of this type %d:", typ)
+		// 	// return errors.Errorf("Entity acomlready has component of this type %d:", typ)
+		// }
+
+		fmt.Println("pointer", &c, c)
+	}
 	cm.m[e] = entry
 	return nil
 }
-
-// func (cm *Map) add(e string, cs ...*interface{}) error {
-
-// 	var entry map[Type]*interface{}
-// 	// Create a entry if entity doesn't have one
-// 	var ok bool
-// 	if entry, ok = cm.m[e]; !ok {
-// 		entry = make(map[Type]*interface{})
-// 	}
-
-// 	for _, c := range cs {
-
-// 		var typ Type
-// 		switch (*c).(type) {
-// 		case Pos:
-// 			typ = PositionType
-// 		case Rect:
-// 			typ = RectType
-// 		default:
-// 			return errors.Errorf("Unknown type %v", c)
-// 		}
-
-// 		// Check that entity doesn't have component
-// 		if _, ok := entry[typ]; ok {
-// 			log.Fatalf("Entity already has component of this type %d:", typ)
-// 			// return errors.Errorf("Entity already has component of this type %d:", typ)
-// 		}
-
-// 		entry[typ] = c
-// 	}
-// 	cm.m[e] = entry
-// 	return nil
-// }
 
 func (cm *Map) hasComponents(e string, types ...Type) bool {
 	if _, ok := cm.m[e]; !ok {
