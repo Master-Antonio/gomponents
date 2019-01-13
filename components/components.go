@@ -1,8 +1,12 @@
 package components
 
 import (
+	"image"
 	"log"
 
+	"github.com/hajimehoshi/ebiten"
+	ase "github.com/kyeett/GoAseprite"
+	"github.com/peterhellberg/gfx"
 	"github.com/pkg/errors"
 )
 
@@ -11,41 +15,78 @@ type Type byte
 
 func (t Type) String() string {
 	switch t {
-	case drawableType:
-		return "drawableType"
-	case ownedType:
-		return "ownedType"
-	case posType:
-		return "posType"
-	case rectType:
-		return "rectType"
+	case DrawableType:
+		return "DrawableType"
+	case OwnedType:
+		return "OwnedType"
+	case PosType:
+		return "PosType"
+	case VelocityType:
+		return "VelocityType"
+	case SpriteType:
+		return "SpriteType"
+	case HitboxType:
+		return "HitboxType"
+	case AnimatedType:
+		return "AnimatedType"
 	default:
 		return "unknown"
 	}
 }
 
+// ComponentTypes that are used for the Get/Set/HasComponents calls
 const (
-	drawableType Type = iota + 1
-	ownedType
-	posType
-	rectType
+	DrawableType Type = iota + 1
+	HitboxType
+	OwnedType
+	PosType
+	VelocityType
+	SpriteType
+	AnimatedType
+	DirectionType
+	TagsType
 )
 
 // Owned is is the parent of a component
 type Owned struct{}
 
 // Drawable is a component that can be drawn
-type Drawable struct{}
+type Drawable struct {
+	*ebiten.Image
+}
 
 // Pos is the position of an entity
 type Pos struct {
-	X, Y int
+	gfx.Vec
 }
 
-// Rect is just a temp object
-type Rect struct {
-	W, H int
+// Velocity of an entity
+type Velocity struct {
+	gfx.Vec
 }
+
+// Hitbox is the rectangle used for collisions
+type Hitbox struct {
+	gfx.Rect
+}
+
+// Sprite is the image for drawing
+type Sprite struct {
+	image.Image
+}
+
+// Animated contains Aseprite sprite animation information
+type Animated struct {
+	Ase ase.File
+}
+
+// Direction of an entity
+type Direction struct {
+	D float64
+}
+
+// Tags is a generic strings that can be attached to an entity
+type Tags []string
 
 // Map maps between entities and components
 type Map struct {
@@ -59,7 +100,8 @@ func NewMap() *Map {
 	return &cm
 }
 
-func (cm *Map) add(e string, cs ...interface{}) error {
+// Add component typ cs to entity e
+func (cm *Map) Add(e string, cs ...interface{}) error {
 
 	var entry map[Type]interface{}
 	// Create a entry if entity doesn't have one
@@ -68,7 +110,7 @@ func (cm *Map) add(e string, cs ...interface{}) error {
 		entry = make(map[Type]interface{})
 	}
 
-	failIfAleadyExist := func(t Type) {
+	failIfAlreadyExist := func(t Type) {
 		if _, ok := entry[t]; ok {
 			log.Fatalf("Entity already has ponent of this type %d:", t)
 		}
@@ -79,20 +121,40 @@ func (cm *Map) add(e string, cs ...interface{}) error {
 		var typ Type
 		switch v := c.(type) {
 		case Pos:
-			failIfAleadyExist(typ)
-			typ = posType
-			entry[typ] = &v
-		case Rect:
-			failIfAleadyExist(typ)
-			typ = rectType
+			failIfAlreadyExist(typ)
+			typ = PosType
 			entry[typ] = &v
 		case Drawable:
-			failIfAleadyExist(typ)
-			typ = drawableType
+			failIfAlreadyExist(typ)
+			typ = DrawableType
 			entry[typ] = &v
 		case Owned:
-			failIfAleadyExist(typ)
-			typ = ownedType
+			failIfAlreadyExist(typ)
+			typ = OwnedType
+			entry[typ] = &v
+		case Tags:
+			failIfAlreadyExist(typ)
+			typ = TagsType
+			entry[typ] = &v
+		case Hitbox:
+			failIfAlreadyExist(typ)
+			typ = HitboxType
+			entry[typ] = &v
+		case Velocity:
+			failIfAlreadyExist(typ)
+			typ = VelocityType
+			entry[typ] = &v
+		case Sprite:
+			failIfAlreadyExist(typ)
+			typ = SpriteType
+			entry[typ] = &v
+		case Animated:
+			failIfAlreadyExist(typ)
+			typ = AnimatedType
+			entry[typ] = &v
+		case Direction:
+			failIfAlreadyExist(typ)
+			typ = DirectionType
 			entry[typ] = &v
 		default:
 			return errors.Errorf("Unknown type %v", c)
@@ -102,25 +164,33 @@ func (cm *Map) add(e string, cs ...interface{}) error {
 	return nil
 }
 
-func (cm *Map) remove(e string, typ Type) {
+// Remove component of type typ for entity e
+func (cm *Map) Remove(e string, typ Type) {
 	delete(cm.m[e], typ)
 }
 
-func (cm *Map) removeAll(e string) {
+// RemoveAll components for entity e
+func (cm *Map) RemoveAll(e string) {
 	for key := range cm.m[e] {
 		delete(cm.m[e], key)
 	}
 }
 
-func (cm *Map) get(e string, typ Type) (interface{}, error) {
+// Get component of type typ for entity e
+func (cm *Map) Get(e string, typ Type) (interface{}, error) {
 	if _, ok := cm.m[e]; !ok {
 		return nil, errors.New("invalid ID")
 	}
-
 	return cm.m[e][typ], nil
 }
 
-func (cm *Map) hasComponents(e string, types ...Type) bool {
+// GetUnsafe gets an object without checking the error. Use HasComponents before, to check multiple types
+func (cm *Map) GetUnsafe(e string, typ Type) interface{} {
+	return cm.m[e][typ]
+}
+
+// HasComponents returns true of entity e has all the componens of type types
+func (cm *Map) HasComponents(e string, types ...Type) bool {
 	if _, ok := cm.m[e]; !ok {
 		return false
 	}

@@ -6,6 +6,8 @@ import (
 	"os"
 	"testing"
 	"text/tabwriter"
+
+	"github.com/peterhellberg/gfx"
 )
 
 type testCase struct {
@@ -18,10 +20,10 @@ func Test_Add(t *testing.T) {
 	e := "123abc"
 	cm := NewMap()
 
-	tcs := []interface{}{Pos{1, 2}, Rect{3, 4}}
+	tcs := []interface{}{Pos{gfx.V(1, 2)}}
 
 	for _, tc := range tcs {
-		if err := cm.add(e, tc); err != nil {
+		if err := cm.Add(e, tc); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -32,12 +34,12 @@ func Test_Set(t *testing.T) {
 	e := "123abc"
 	cm := NewMap()
 
-	if err := cm.add(e, Pos{1, 2}); err != nil {
+	if err := cm.Add(e, Pos{gfx.V(1, 2)}); err != nil {
 		t.Fatal(err)
 	}
 
 	// Updating position
-	v, err := cm.get(e, posType)
+	v, err := cm.Get(e, PosType)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,13 +48,13 @@ func Test_Set(t *testing.T) {
 	p.X++
 
 	// Get position again
-	w, err := cm.get(e, posType)
+	w, err := cm.Get(e, PosType)
 	if err != nil {
 		t.Fatal(err)
 	}
 	p2 := w.(*Pos)
 
-	expected := Pos{X: 3, Y: 2}
+	expected := Pos{gfx.V(3, 2)}
 	if *p2 != expected {
 		log.Fatalf("expected %v, got %v\n", *p2, expected)
 	}
@@ -62,34 +64,34 @@ func Test_HasComponents(t *testing.T) {
 	e := "123abc"
 	cm := NewMap()
 
-	if err := cm.add(e, Pos{1, 2}); err != nil {
+	if err := cm.Add(e, Pos{gfx.V(1, 2)}); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := cm.add(e, Rect{3, 4}); err != nil {
+	if err := cm.Add(e, Owned{}); err != nil {
 		t.Fatal(err)
 	}
 
 	tcs := []testCase{
 		{
-			"Rect only",
-			[]Type{rectType},
+			"Owned only",
+			[]Type{OwnedType},
 			true,
 		},
 		{
-			"Rect and Position",
-			[]Type{rectType, posType},
+			"Owned and Position",
+			[]Type{OwnedType, PosType},
 			true,
 		},
 		{
 			"Drawable only",
-			[]Type{drawableType},
+			[]Type{DrawableType},
 			false,
 		},
 	}
 
 	for _, tc := range tcs {
-		if cm.hasComponents(e, tc.types...) != tc.expected {
+		if cm.HasComponents(e, tc.types...) != tc.expected {
 			t.Fatalf("%s: expected = %t", tc.msg, tc.expected)
 		}
 	}
@@ -100,23 +102,23 @@ func Test_Remove(t *testing.T) {
 	e := "123abc"
 	cm := NewMap()
 
-	if err := cm.add(e, Pos{1, 2}); err != nil {
+	if err := cm.Add(e, Pos{gfx.V(1, 2)}); err != nil {
 		t.Fatal(err)
 	}
-	if err := cm.add(e, Drawable{}); err != nil {
+	if err := cm.Add(e, Drawable{}); err != nil {
 		t.Fatal(err)
 	}
 
 	tcs := []testCase{
-		{"", []Type{posType}, true},
-		{"", []Type{drawableType}, true},
-		{"", []Type{ownedType}, false},
+		{"", []Type{PosType}, true},
+		{"", []Type{DrawableType}, true},
+		{"", []Type{OwnedType}, false},
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 12, 0, 1, ' ', tabwriter.Debug)
 	fmt.Fprintf(w, "HAS\tEXPECTED\tGOT\t\n")
 	for _, tc := range tcs {
-		actual := cm.hasComponents(e, tc.types...)
+		actual := cm.HasComponents(e, tc.types...)
 		fmt.Fprintf(w, "%v\t%t\t%t\t\n", tc.types, tc.expected, actual)
 
 		if actual != tc.expected {
@@ -126,23 +128,23 @@ func Test_Remove(t *testing.T) {
 	}
 
 	// Remove position
-	cm.remove(e, posType)
+	cm.Remove(e, PosType)
 
 	// Remove non-existing type
-	cm.remove(e, ownedType) // Shouldn't crash
+	cm.Remove(e, OwnedType) // Shouldn't crash
 
 	// Remove from non-existing entity
-	cm.remove("xyz987", ownedType) // Shouldn't crash
+	cm.Remove("xyz987", OwnedType) // Shouldn't crash
 
 	tcs = []testCase{
-		{"", []Type{posType}, false},
-		{"", []Type{drawableType}, true},
-		{"", []Type{ownedType}, false},
+		{"", []Type{PosType}, false},
+		{"", []Type{DrawableType}, true},
+		{"", []Type{OwnedType}, false},
 	}
 	w = tabwriter.NewWriter(os.Stdout, 12, 0, 1, ' ', tabwriter.Debug)
 	fmt.Fprintf(w, "HAS\tEXPECTED\tGOT\t\n")
 	for _, tc := range tcs {
-		actual := cm.hasComponents(e, tc.types...)
+		actual := cm.HasComponents(e, tc.types...)
 		fmt.Fprintf(w, "%v\t%t\t%t\t\n", tc.types, tc.expected, actual)
 
 		if actual != tc.expected {
@@ -157,18 +159,18 @@ func Test_RemoveAll(t *testing.T) {
 	e := "abc123"
 	cm := NewMap()
 
-	if err := cm.add(e, Pos{}); err != nil {
+	if err := cm.Add(e, Pos{}); err != nil {
 		t.Fatal(err)
 	}
-	if err := cm.add(e, Owned{}); err != nil {
+	if err := cm.Add(e, Owned{}); err != nil {
 		t.Fatal(err)
 	}
 
-	cm.removeAll(e)
-	if cm.hasComponents(e, posType) || cm.hasComponents(e, ownedType) || cm.hasComponents(e, drawableType) {
+	cm.RemoveAll(e)
+	if cm.HasComponents(e, PosType) || cm.HasComponents(e, OwnedType) || cm.HasComponents(e, DrawableType) {
 		t.Fatalf("Expected no components, got %s=%t,%s=%t,%s=%t",
-			posType, cm.hasComponents(e, posType),
-			ownedType, cm.hasComponents(e, ownedType),
-			drawableType, cm.hasComponents(e, drawableType))
+			PosType, cm.HasComponents(e, PosType),
+			OwnedType, cm.HasComponents(e, OwnedType),
+			DrawableType, cm.HasComponents(e, DrawableType))
 	}
 }
