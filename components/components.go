@@ -1,11 +1,13 @@
 package components
 
 import (
-	"image"
+	"fmt"
 	"log"
+	"math"
 
 	"github.com/hajimehoshi/ebiten"
 	ase "github.com/kyeett/GoAseprite"
+	"github.com/kyeett/gomponents/direction"
 	"github.com/peterhellberg/gfx"
 	"github.com/pkg/errors"
 )
@@ -45,6 +47,14 @@ const (
 	AnimatedType
 	DirectionType
 	TagsType
+	CounterType
+	HazardType
+	BouncyType
+	KillableType
+	ScenarioType
+	RotatedType
+	TeleportingType
+	TriggerType
 )
 
 // Owned is is the parent of a component
@@ -68,11 +78,24 @@ type Velocity struct {
 // Hitbox is the rectangle used for collisions
 type Hitbox struct {
 	gfx.Rect
+	Properties map[string]bool
 }
 
-// Sprite is the image for drawing
-type Sprite struct {
-	image.Image
+type Trigger struct {
+	gfx.Rect
+	Scenario  string
+	Direction direction.D
+}
+
+func (t *Trigger) String() string {
+	return fmt.Sprintf("Trigger: %s at %v from %s", t.Scenario, t.Rect, t.Direction)
+}
+
+func NewHitbox(rect gfx.Rect) Hitbox {
+	return Hitbox{
+		Rect:       rect,
+		Properties: make(map[string]bool),
+	}
 }
 
 // Animated contains Aseprite sprite animation information
@@ -83,6 +106,38 @@ type Animated struct {
 // Direction of an entity
 type Direction struct {
 	D float64
+}
+
+// Hazard marks an entity as dangerous
+type Hazard struct{}
+
+// Bouncy marks an entity as bouncy
+type Bouncy struct{}
+
+// Killable marks an entity as killable
+type Killable struct{}
+
+// Hazard marks an entity as killable
+type Teleporting struct {
+	Name, Target string
+	Pos          gfx.Vec
+}
+
+// Rotated denotes the rotation of an entity
+type Rotated struct {
+	Angle float64
+}
+
+func (r *Rotated) Rotate(v float64) {
+	r.Angle = math.Mod(r.Angle+v, 2*math.Pi)
+}
+
+// Counter is a map of string keys and values
+type Counter map[string]int
+
+// Scenario is a function that gets called every turn
+type Scenario struct {
+	F func() bool
 }
 
 // Tags is a generic strings that can be attached to an entity
@@ -144,9 +199,9 @@ func (cm *Map) Add(e string, cs ...interface{}) error {
 			failIfAlreadyExist(typ)
 			typ = VelocityType
 			entry[typ] = &v
-		case Sprite:
+		case Counter:
 			failIfAlreadyExist(typ)
-			typ = SpriteType
+			typ = CounterType
 			entry[typ] = &v
 		case Animated:
 			failIfAlreadyExist(typ)
@@ -155,6 +210,34 @@ func (cm *Map) Add(e string, cs ...interface{}) error {
 		case Direction:
 			failIfAlreadyExist(typ)
 			typ = DirectionType
+			entry[typ] = &v
+		case Hazard:
+			failIfAlreadyExist(typ)
+			typ = HazardType
+			entry[typ] = &v
+		case Bouncy:
+			failIfAlreadyExist(typ)
+			typ = BouncyType
+			entry[typ] = &v
+		case Killable:
+			failIfAlreadyExist(typ)
+			typ = KillableType
+			entry[typ] = &v
+		case Scenario:
+			failIfAlreadyExist(typ)
+			typ = ScenarioType
+			entry[typ] = &v
+		case Rotated:
+			failIfAlreadyExist(typ)
+			typ = RotatedType
+			entry[typ] = &v
+		case Teleporting:
+			failIfAlreadyExist(typ)
+			typ = TeleportingType
+			entry[typ] = &v
+		case Trigger:
+			failIfAlreadyExist(typ)
+			typ = TriggerType
 			entry[typ] = &v
 		default:
 			return errors.Errorf("Unknown type %v", c)
