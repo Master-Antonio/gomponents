@@ -81,6 +81,7 @@ type Hitbox struct {
 	Properties map[string]bool
 }
 
+// Trigger is a an area that triggers a scenario
 type Trigger struct {
 	gfx.Rect
 	Scenario  string
@@ -91,6 +92,7 @@ func (t *Trigger) String() string {
 	return fmt.Sprintf("Trigger: %s at %v from %s", t.Scenario, t.Rect, t.Direction)
 }
 
+// NewHitbox returns a new hitbox
 func NewHitbox(rect gfx.Rect) Hitbox {
 	return Hitbox{
 		Rect:       rect,
@@ -117,7 +119,7 @@ type Bouncy struct{}
 // Killable marks an entity as killable
 type Killable struct{}
 
-// Hazard marks an entity as killable
+// Teleporting teleports entity on collision
 type Teleporting struct {
 	Name, Target string
 	Pos          gfx.Vec
@@ -128,6 +130,7 @@ type Rotated struct {
 	Angle float64
 }
 
+// Rotate angle further. Wraps at 2*Pi
 func (r *Rotated) Rotate(v float64) {
 	r.Angle = math.Mod(r.Angle+v, 2*math.Pi)
 }
