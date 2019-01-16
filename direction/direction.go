@@ -31,6 +31,8 @@ var (
 	Down  D = D(1 << 1)
 	Left  D = D(1 << 2)
 	Right D = D(1 << 3)
+	UDLR  D = Up | Down | Left | Right
+	All   D = UDLR
 )
 
 func FromVec(v gfx.Vec) D {
@@ -58,17 +60,19 @@ func FromString(s string) D {
 		return D(Up | Down | Left | Right)
 	}
 
+	s = strings.ToLower(s)
+
 	var dir D
-	if strings.Contains(s, "U") {
+	if strings.Contains(s, "u") {
 		dir |= Up
 	}
-	if strings.Contains(s, "D") {
+	if strings.Contains(s, "d") {
 		dir |= Down
 	}
-	if strings.Contains(s, "L") {
+	if strings.Contains(s, "l") {
 		dir |= Left
 	}
-	if strings.Contains(s, "R") {
+	if strings.Contains(s, "r") {
 		dir |= Right
 	}
 	return dir
