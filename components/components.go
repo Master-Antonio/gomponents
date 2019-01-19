@@ -55,6 +55,7 @@ const (
 	RotatedType
 	TeleportingType
 	TriggerType
+	FollowingType
 )
 
 // Owned is is the parent of a component
@@ -70,6 +71,12 @@ type Pos struct {
 	gfx.Vec
 }
 
+// Following follows entity with ID at an offset
+type Following struct {
+	ID     string
+	Offset gfx.Vec
+}
+
 // Velocity of an entity
 type Velocity struct {
 	gfx.Vec
@@ -79,6 +86,16 @@ type Velocity struct {
 type Hitbox struct {
 	gfx.Rect
 	Properties map[string]bool
+	Target     string
+}
+
+// NewHitbox returns a new hitbox
+func NewHitbox(rect gfx.Rect) Hitbox {
+	return Hitbox{
+		Rect:       rect,
+		Properties: make(map[string]bool),
+		Target:     "",
+	}
 }
 
 // Trigger is a an area that triggers a scenario
@@ -90,14 +107,6 @@ type Trigger struct {
 
 func (t *Trigger) String() string {
 	return fmt.Sprintf("Trigger: %s at %v from %s", t.Scenario, t.Rect, t.Direction)
-}
-
-// NewHitbox returns a new hitbox
-func NewHitbox(rect gfx.Rect) Hitbox {
-	return Hitbox{
-		Rect:       rect,
-		Properties: make(map[string]bool),
-	}
 }
 
 // Animated contains Aseprite sprite animation information
@@ -241,6 +250,10 @@ func (cm *Map) Add(e string, cs ...interface{}) error {
 		case Trigger:
 			failIfAlreadyExist(typ)
 			typ = TriggerType
+			entry[typ] = &v
+		case Following:
+			failIfAlreadyExist(typ)
+			typ = FollowingType
 			entry[typ] = &v
 		default:
 			return errors.Errorf("Unknown type %v", c)
