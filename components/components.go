@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"time"
 
 	"github.com/hajimehoshi/ebiten"
 	ase "github.com/kyeett/GoAseprite"
@@ -46,6 +47,7 @@ const (
 	SpriteType
 	AnimatedType
 	DirectionType
+	DirectedType
 	TagsType
 	CounterType
 	HazardType
@@ -56,6 +58,7 @@ const (
 	TeleportingType
 	TriggerType
 	FollowingType
+	TimedType
 )
 
 // Owned is is the parent of a component
@@ -114,9 +117,14 @@ type Animated struct {
 	Ase ase.File
 }
 
-// Direction of an entity
+// Direction of an entity, shouldn't be used. Use Directed instead
 type Direction struct {
 	D float64
+}
+
+// Directed represents the direction of an entity
+type Directed struct {
+	direction.D
 }
 
 // Hazard marks an entity as dangerous
@@ -150,6 +158,11 @@ type Counter map[string]int
 // Scenario is a function that gets called every turn
 type Scenario struct {
 	F func() bool
+}
+
+// Scenario is a function that gets called every turn
+type Timed struct {
+	time.Time
 }
 
 // Tags is a generic strings that can be attached to an entity
@@ -223,6 +236,10 @@ func (cm *Map) Add(e string, cs ...interface{}) error {
 			failIfAlreadyExist(typ)
 			typ = DirectionType
 			entry[typ] = &v
+		case Directed:
+			failIfAlreadyExist(typ)
+			typ = DirectedType
+			entry[typ] = &v
 		case Hazard:
 			failIfAlreadyExist(typ)
 			typ = HazardType
@@ -254,6 +271,10 @@ func (cm *Map) Add(e string, cs ...interface{}) error {
 		case Following:
 			failIfAlreadyExist(typ)
 			typ = FollowingType
+			entry[typ] = &v
+		case Timed:
+			failIfAlreadyExist(typ)
+			typ = TimedType
 			entry[typ] = &v
 		default:
 			return errors.Errorf("Unknown type %v", c)
